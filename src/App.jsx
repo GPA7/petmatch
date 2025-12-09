@@ -1,11 +1,13 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import ReactMarkdown from 'react-markdown'
 import { pingSupabase, supabase } from './supabaseClient'
+import Login from './Login'
 
 function App() {
   const apiKey = import.meta.env.VITE_GEMMA_API_KEY
 
+  const [session, setSession] = useState(null)
   const [prompt, setPrompt] = useState('')
   const [aiText, setAiText] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -13,6 +15,24 @@ function App() {
   const [modelsText, setModelsText] = useState('')
   const [isSupabaseLoading, setIsSupabaseLoading] = useState(false)
   const [supabaseStatus, setSupabaseStatus] = useState('')
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+  }
 
   const handleSearch = async () => {
     if (!apiKey) {
@@ -118,6 +138,10 @@ function App() {
     }
   }
 
+  if (!session) {
+    return <Login />
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-500 via-orange-400 to-red-500 text-white">
       <div className="relative isolate overflow-hidden">
@@ -129,9 +153,17 @@ function App() {
             <span className="rounded-full bg-white/15 px-4 py-2 text-xs uppercase tracking-[0.2em] text-white/80">
               PetMatch
             </span>
-            <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white/70">
-              Canine Matchmaking
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-white/70">
+                Canine Matchmaking
+              </span>
+              <button
+                onClick={handleLogout}
+                className="rounded-full bg-white/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white/90 transition duration-150 hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white/60"
+              >
+                Esci
+              </button>
+            </div>
           </header>
 
           <main className="flex flex-1 flex-col justify-center gap-10">
@@ -154,7 +186,7 @@ function App() {
                 Inizia il Matching
               </button>
               <span className="text-sm text-white/80">
-                Nessuna registrazione iniziale, solo vibes canine.
+                Trova il match perfetto per il tuo amico a quattro zampe.
               </span>
             </div>
           </main>
